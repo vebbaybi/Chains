@@ -1,0 +1,193 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Webbaby
+
+//@version=6
+indicator("Sandy", overlay=true, max_lines_count=500, max_labels_count=500)
+
+// === USER INPUTS ===
+tolerance        = input.float(0.03, "Fibonacci Tolerance", minval=0.01, maxval=0.1)
+minLegLength     = input.int(5, "Minimum Pivot Leg Length", minval=1)
+swingDepth       = input.int(50, "Pivot History Depth", minval=10)
+showBullish      = input.bool(true, "Show Bullish Patterns")
+showBearish      = input.bool(true, "Show Bearish Patterns")
+showTP           = input.bool(true, "Show Take Profit Levels")
+showPRZ          = input.bool(true, "Show PRZ Zone")
+
+// === SWING DETECTION ===
+swHigh = ta.pivothigh(high, minLegLength, minLegLength)
+swLow  = ta.pivotlow(low, minLegLength, minLegLength)
+
+var float[] pivots = array.new_float()
+var int[] pivotBars = array.new_int()
+var bool[] isHigh = array.new_bool()
+
+if not na(swHigh)
+    array.unshift(pivots, swHigh)
+    array.unshift(pivotBars, bar_index - minLegLength)
+    array.unshift(isHigh, true)
+
+if not na(swLow)
+    array.unshift(pivots, swLow)
+    array.unshift(pivotBars, bar_index - minLegLength)
+    array.unshift(isHigh, false)
+
+if array.size(pivots) > swingDepth
+    array.pop(pivots)
+    array.pop(pivotBars)
+    array.pop(isHigh)
+
+// === FIB VALIDATION ===
+within(val, target, tol) =>
+    val >= (target - tol) and val <= (target + tol)
+
+// === PATTERN STRUCT ===
+struct HarmonicPattern
+    string type
+    int x_bar, a_bar, b_bar, c_bar, d_bar
+    float x_price, a_price, b_price, c_price, d_price
+    color lineColor
+    color textColor
+    bool isBullish
+
+var int lastPatternBar = na
+var HarmonicPattern[] detectedPatterns = array.new<HarmonicPattern>()
+var bool alertBarTriggered = false
+alertBarTriggered := false
+
+if bar_index % 10 == 0
+    if array.size(detectedPatterns) > swingDepth / 2
+        array.shift(detectedPatterns)
+
+for i = 0 to array.size(pivots) - 5
+    float d = array.get(pivots, i)
+    float c = array.get(pivots, i + 1)
+    float b = array.get(pivots, i + 2)
+    float a = array.get(pivots, i + 3)
+    float x = array.get(pivots, i + 4)
+
+    int db = array.get(pivotBars, i)
+    int cb = array.get(pivotBars, i + 1)
+    int bb = array.get(pivotBars, i + 2)
+    int ab = array.get(pivotBars, i + 3)
+    int xb = array.get(pivotBars, i + 4)
+
+    if not (xb < ab and ab < bb and bb < cb and cb < db)
+        continue
+
+    bool xIsHigh = array.get(isHigh, i + 4)
+    bool aIsHigh = array.get(isHigh, i + 3)
+    bool bIsHigh = array.get(isHigh, i + 2)
+    bool cIsHigh = array.get(isHigh, i + 1)
+    bool dIsHigh = array.get(isHigh, i)
+
+    bool isBull = false
+    bool isBear = false
+
+    if xIsHigh and not aIsHigh and bIsHigh and not cIsHigh and not dIsHigh
+        isBull := true
+    else if not xIsHigh and aIsHigh and not bIsHigh and cIsHigh and dIsHigh
+        isBear := true
+    else
+        continue
+
+    if isBull
+        if not (x > a and b > a and b < x and c > a and c < b and d < c)
+            continue
+    if isBear
+        if not (x < a and b < a and b > x and c < a and c > b and d > c)
+            continue
+
+    float xa_len = math.abs(x - a)
+    float ab_len = math.abs(a - b)
+    float bc_len = math.abs(b - c)
+    float cd_len = math.abs(c - d)
+    float xd_len = math.abs(x - d)
+
+    if xa_len == 0 or ab_len == 0 or bc_len == 0 or cd_len == 0
+        continue
+
+    float ab_ratio = ab_len / xa_len
+    float bc_ratio = bc_len / ab_len
+    float cd_ratio = cd_len / bc_len
+    float xd_ratio = xd_len / xa_len
+
+    string patternType = ""
+    bool match = false
+
+    if isBull and showBullish
+        if within(ab_ratio, 0.618, tolerance) and
+           (within(bc_ratio, 0.382, tolerance) or within(bc_ratio, 0.886, tolerance)) and
+           (within(cd_ratio, 1.27, tolerance) or within(cd_ratio, 1.618, tolerance)) and
+           within(xd_ratio, 0.786, tolerance)
+            patternType := "Bullish Gartley"
+            match := true
+        else if (within(ab_ratio, 0.382, tolerance) or within(ab_ratio, 0.5, tolerance)) and
+                (within(bc_ratio, 0.382, tolerance) or within(bc_ratio, 0.886, tolerance)) and
+                (within(cd_ratio, 1.618, tolerance) or within(cd_ratio, 2.618, tolerance)) and
+                within(xd_ratio, 0.886, tolerance)
+            patternType := "Bullish Bat"
+            match := true
+        else if within(ab_ratio, 0.786, tolerance) and
+                (within(bc_ratio, 0.382, tolerance) or within(bc_ratio, 0.886, tolerance)) and
+                (within(cd_ratio, 1.618, tolerance) or within(cd_ratio, 2.24, tolerance)) and
+                within(xd_ratio, 1.27, tolerance)
+            patternType := "Bullish Butterfly"
+            match := true
+
+    if isBear and showBearish
+        if within(ab_ratio, 0.618, tolerance) and
+           (within(bc_ratio, 0.382, tolerance) or within(bc_ratio, 0.886, tolerance)) and
+           (within(cd_ratio, 1.27, tolerance) or within(cd_ratio, 1.618, tolerance)) and
+           within(xd_ratio, 0.786, tolerance)
+            patternType := "Bearish Gartley"
+            match := true
+        else if (within(ab_ratio, 0.382, tolerance) or within(ab_ratio, 0.5, tolerance)) and
+                (within(bc_ratio, 0.382, tolerance) or within(bc_ratio, 0.886, tolerance)) and
+                (within(cd_ratio, 1.618, tolerance) or within(cd_ratio, 2.618, tolerance)) and
+                within(xd_ratio, 0.886, tolerance)
+            patternType := "Bearish Bat"
+            match := true
+        else if within(ab_ratio, 0.786, tolerance) and
+                (within(bc_ratio, 0.382, tolerance) or within(bc_ratio, 0.886, tolerance)) and
+                (within(cd_ratio, 1.618, tolerance) or within(cd_ratio, 2.24, tolerance)) and
+                within(xd_ratio, 1.27, tolerance)
+            patternType := "Bearish Butterfly"
+            match := true
+
+    if match
+        bool alreadyDrawn = false
+        for pattern_idx = 0 to array.size(detectedPatterns) - 1
+            if array.get(detectedPatterns, pattern_idx).d_bar == db
+                alreadyDrawn := true
+                break
+
+        if not alreadyDrawn
+            color lineColor = isBull ? color.green : color.red
+            line.new(xb, x, ab, a, color=color.gray, width=1)
+            line.new(ab, a, bb, b, color=color.gray, width=1)
+            line.new(bb, b, cb, c, color=color.gray, width=1)
+            line.new(cb, c, db, d, color=lineColor, width=2)
+
+            label.new(db, d, patternType, style=isBull ? label.style_label_up : label.style_label_down, 
+                      color=color.white, textcolor=color.black, size=size.small)
+
+            float tp1 = isBull ? d + math.abs(x - d) * 0.382 : d - math.abs(x - d) * 0.382
+            float tp2 = isBull ? d + math.abs(x - d) * 0.618 : d - math.abs(x - d) * 0.618
+
+            if showTP
+                line.new(db, tp1, db + 10, tp1, color=color.blue, width=1, style=line.style_dashed)
+                line.new(db, tp2, db + 10, tp2, color=color.blue, width=1, style=line.style_dashed)
+
+            if showPRZ
+                float przHigh = d + (xd_len * tolerance)
+                float przLow = d - (xd_len * tolerance)
+                line.new(db, przHigh, db + 10, przHigh, color=color.purple, style=line.style_dotted)
+                line.new(db, przLow, db + 10, przLow, color=color.purple, style=line.style_dotted)
+
+            if db == bar_index
+                alertBarTriggered := true
+
+            array.push(detectedPatterns, HarmonicPattern.new(patternType, xb, ab, bb, cb, db, x, a, b, c, d, lineColor, color.black, isBull))
+
+// === ALERT ===
+alertcondition(alertBarTriggered, title="Harmonic Pattern Confirmed", message="New harmonic pattern detected on current bar.")
