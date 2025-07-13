@@ -1,0 +1,12 @@
+curl --url https://mainnet.infura.io/v3/639e831ca4ee4561a890f096181a6fb0 \
+  -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+  import requests
+
+def is_rpc_url_live(url):
+    try:
+        r = requests.post(url, json={}, timeout=3)
+        return r.status_code < 500
+    except Exception:
+        return False

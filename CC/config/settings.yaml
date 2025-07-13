@@ -1,0 +1,81 @@
+bot:
+  name: "ChainCrawler"
+  version: "1.0.0"
+  environment: "production"
+  logging_level: "INFO"
+  notification_rate_limit: 60
+
+wallets:
+  primary_eth:
+    label: "Main Ethereum Wallet"
+    type: "evm"
+    address: "0xYourEthereumWalletAddress"
+    private_key: "env:PRIMARY_ETH_PRIVATE_KEY"
+    max_slippage: 0.02
+    gas_multiplier: 1.2
+    min_balance: 0.01
+
+  primary_solana:
+    label: "Main Solana Wallet"
+    type: "solana"
+    address: "YourSolanaWalletAddress"
+    private_key: "env:PRIMARY_SOL_PRIVATE_KEY"
+    min_balance: 0.01
+
+  secondary_eth:
+    label: "Backup Ethereum Wallet"
+    type: "evm"
+    address: "0xYourBackupEthereumWallet"
+    private_key: "env:SECONDARY_ETH_PRIVATE_KEY"
+    enabled: false
+
+  secondary_solana:
+    label: "Backup Solana Wallet"
+    type: "solana"
+    address: "YourBackupSolanaWallet"
+    private_key: "env:SECONDARY_SOL_PRIVATE_KEY"
+    enabled: false
+
+trading:
+  sniping:
+    min_liquidity_usd: 10000
+    max_token_age_minutes: 60
+    min_market_cap_usd: 50000
+    max_buy_percentage: 0.05
+    gas_limit: 300000
+
+  anti_rug:
+    min_holder_count: 50
+    max_dev_ownership: 0.1
+    check_contract_verification: true
+    check_honeypot: true
+    min_locked_liquidity_percentage: 0.7
+
+  auto_exit:
+    profit_target: 2.0
+    stop_loss: 0.3
+    trailing_stop: 0.1
+    max_holding_time_hours: 24
+
+notifications:
+  telegram:
+    enabled: true
+    chat_id: "env:TELEGRAM_CHAT_ID"
+    bot_token: "env:TELEGRAM_BOT_TOKEN"
+  discord:
+    enabled: false
+    webhook_url: "env:DISCORD_WEBHOOK_URL"
+  alert_on:
+    - new_token_detected
+    - trade_executed
+    - rug_detected
+    - profit_target_hit
+    - stop_loss_triggered
+
+dashboard:
+  enabled: true
+  port: 8501
+  auth:
+    username: "admin"
+    password_hash: "env:DASHBOARD_PASSWORD_HASH"
+  refresh_interval_seconds: 60

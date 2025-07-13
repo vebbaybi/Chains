@@ -1,0 +1,36 @@
+ChainCrawlr/
+│
+├── main.py                         # Main bot controller and orchestrator
+│
+├── core/
+│   ├── token_scanner.py           # Detects new tokens & filters by safety
+│   ├── sniper.py                  # Executes snipe buys with fast confirmation
+│   ├── anti_rug.py                # Validates smart contracts for rugs
+│   ├── portfolio_manager.py       # Manages token balances & valuation
+│   └── auto_exit.py               # Handles laddered exits & rug detection
+│
+├── dex_clients/
+│   ├── uniswap.py
+│   ├── raydium.py
+│   └── jupiter.py
+│
+├── config/
+│   ├── settings.yaml              # Global bot settings (thresholds, toggles)
+│   └── chains.json                # RPC URLs, gas, DEX routes per chain
+│
+├── interface/
+│   ├── dashboard.py               # Real-time dashboard (Streamlit or Flask)
+│   ├── notifier.py                # Sends alerts via Telegram / Discord
+│   └── signal_payloads.py         # Standardized message formats for alerts
+│
+├── utils/
+│   ├── telegram.py
+│   ├── caching.py
+│   ├── logger.py                  # Rotating, structured logger + optional alert hooks
+│   └── helpers.py                 # Shared utility functions (timing, formatting, gas calc, etc.)
+│
+├── keys/
+│   └── wallet_secrets.json        # Encrypted keys/seeds (DO NOT COMMIT)
+│
+└── logs/                          # Rotated runtime logs and event tracebacks
+    └── chaincrawler.log
